@@ -1,0 +1,627 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+
+<title>Discord</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+:root{
+  --bg:#1e1f22;--bg2:#2b2d31;--bg3:#313338;--sidebar:#2b2d31;
+  --accent:#5865f2;--text:#dcddde;--muted:#949ba4;--border:#3a3c43;
+  --input-bg:#383a40;--danger:#ed4245;--online:#23a55a;--idle:#f0b232;--dnd:#ed4245;
+}
+html,body{width:100%;height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:-apple-system,sans-serif;font-size:14px;display:flex;flex-direction:column;}
+
+/* topbar */
+#topbar{background:var(--bg3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:6px;padding:0 8px;height:44px;flex-shrink:0;min-width:0;}
+#menu-btn,#refresh-btn,#members-btn{background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;padding:4px;line-height:1;flex-shrink:0;}
+#channel-name{font-weight:600;font-size:14px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff;min-width:0;}
+#profile-area{display:flex;align-items:center;gap:5px;cursor:pointer;padding:3px 5px;border-radius:6px;flex-shrink:0;}
+.p-av{width:26px;height:26px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0;}
+.p-av img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+#profile-name{font-size:11px;font-weight:600;color:var(--text);max-width:55px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* body */
+#body{display:flex;flex:1;overflow:hidden;min-height:0;}
+#overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:5;}
+#overlay.visible{display:block;}
+
+/* left sidebar */
+#sidebar{width:220px;background:var(--sidebar);display:flex;flex-direction:column;flex-shrink:0;z-index:6;position:fixed;top:44px;bottom:0;left:0;transform:translateX(-220px);transition:transform .2s;}
+#sidebar.open{transform:translateX(0);}
+#sidebar-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+.stab{flex:1;padding:9px 0;text-align:center;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;}
+.stab.active{color:#fff;border-bottom-color:var(--accent);}
+#servers-list,#dms-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.server-item{display:flex;align-items:center;gap:8px;padding:7px 10px;cursor:pointer;border-radius:6px;margin:2px 5px;}
+.server-item.active,.server-item:active{background:rgba(88,101,242,.15);}
+.server-icon{width:34px;height:34px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden;}
+.server-icon img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.server-name{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.channels-section{padding:4px 0 8px;}
+.ch-header{padding:6px 10px 3px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.ch-item{display:flex;align-items:center;gap:5px;padding:5px 10px;cursor:pointer;border-radius:4px;margin:1px 5px;color:var(--muted);font-size:13px;}
+.ch-item.active,.ch-item:active{background:rgba(255,255,255,.08);color:#fff;}
+
+/* right members panel */
+#members-panel{width:160px;background:var(--bg2);flex-shrink:0;display:flex;flex-direction:column;border-left:1px solid var(--border);overflow:hidden;transition:width .2s;position:relative;z-index:1;}
+#members-panel.hidden{width:0;}
+#members-list{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:6px 0;}
+.role-header{padding:8px 8px 3px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.member-item{display:flex;align-items:center;gap:7px;padding:4px 8px;cursor:pointer;border-radius:4px;margin:1px 3px;}
+.member-item:active{background:rgba(255,255,255,.08);}
+.mem-av-wrap{position:relative;flex-shrink:0;}
+.mem-av{width:28px;height:28px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff;overflow:hidden;}
+.mem-av img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.status-dot{position:absolute;bottom:0;right:0;width:9px;height:9px;border-radius:50%;border:2px solid var(--bg2);}
+.status-dot.online{background:var(--online);}
+.status-dot.idle{background:var(--idle);}
+.status-dot.dnd{background:var(--dnd);}
+.status-dot.offline{background:var(--muted);}
+.mem-name{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0;}
+.dm-btn{background:var(--accent);border:none;color:#fff;border-radius:3px;padding:2px 5px;font-size:10px;cursor:pointer;flex-shrink:0;}
+
+/* chat area */
+#chat-area{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg3);min-width:0;}
+#messages{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:10px 12px;display:flex;flex-direction:column;gap:1px;min-height:0;}
+.msg{display:flex;gap:8px;padding:2px 0;}
+.msg.grouped{padding-left:42px;}
+.avatar{width:34px;height:34px;border-radius:50%;flex-shrink:0;background:transparent;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;overflow:hidden;margin-top:2px;}
+.avatar.no-img{background:var(--accent);}
+.avatar img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.msg-content{flex:1;min-width:0;}
+.msg-header{display:flex;align-items:baseline;gap:7px;margin-bottom:1px;flex-wrap:wrap;}
+.msg-author{font-size:13px;font-weight:600;color:#fff;}
+.msg-time{font-size:10px;color:var(--muted);}
+.msg-text{font-size:13px;line-height:1.5;color:var(--text);word-break:break-word;white-space:pre-wrap;}
+.msg-text a{color:var(--accent);text-decoration:none;}
+.msg-img{margin-top:5px;}
+.msg-img img,.msg-gif img{max-width:200px;max-height:200px;border-radius:6px;display:block;cursor:pointer;}
+.load-more{text-align:center;padding:8px;}
+.load-more button{background:var(--bg2);border:1px solid var(--border);color:var(--muted);border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;}
+.empty-state{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:13px;text-align:center;padding:20px;}
+
+/* typing bar */
+#typing-bar{min-height:20px;padding:2px 12px 3px;font-size:11px;color:var(--muted);flex-shrink:0;font-style:italic;}
+.typing-dots span{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--muted);margin:0 1px;animation:tdot 1.2s infinite;}
+.typing-dots span:nth-child(2){animation-delay:.2s;}
+.typing-dots span:nth-child(3){animation-delay:.4s;}
+@keyframes tdot{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-4px)}}
+
+/* input */
+#input-area{padding:0 10px 8px;background:var(--bg3);display:none;flex-direction:column;gap:0;flex-shrink:0;}
+#input-row{display:flex;gap:6px;align-items:flex-end;}
+#msg-input{flex:1;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;color:var(--text);font-size:14px;resize:none;outline:none;max-height:100px;overflow-y:auto;-webkit-overflow-scrolling:touch;font-family:inherit;line-height:1.4;}
+#img-btn{background:var(--input-bg);border:1px solid var(--border);border-radius:8px;width:38px;height:38px;cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:18px;flex-shrink:0;}
+#send-btn{background:var(--accent);border:none;border-radius:8px;width:38px;height:38px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+#send-btn svg{fill:#fff;}
+#send-btn:disabled{opacity:.4;}
+#file-input{display:none;}
+#img-preview{display:none;padding:5px 0 3px;}
+#img-preview img{max-height:70px;border-radius:6px;}
+#img-preview button{background:var(--danger);border:none;color:#fff;border-radius:4px;padding:2px 7px;font-size:11px;cursor:pointer;margin-left:6px;vertical-align:top;}
+
+/* lightbox */
+#lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:30;align-items:center;justify-content:center;}
+#lightbox.visible{display:flex;}
+#lightbox img{max-width:96vw;max-height:88vh;border-radius:8px;}
+#lightbox-close{position:absolute;top:14px;right:14px;color:#fff;font-size:26px;cursor:pointer;background:none;border:none;}
+
+/* modals */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:20;align-items:center;justify-content:center;}
+.modal-bg.visible{display:flex;}
+.modal-box{background:var(--bg2);border-radius:12px;padding:20px;width:88%;max-width:300px;}
+.modal-box h3{color:#fff;font-size:15px;margin-bottom:12px;}
+.modal-box label{display:block;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin:10px 0 5px;}
+.modal-box input{width:100%;background:var(--input-bg);border:1px solid var(--border);border-radius:6px;padding:8px 10px;color:var(--text);font-size:13px;outline:none;-webkit-appearance:none;}
+.modal-box input:focus{border-color:var(--accent);}
+.modal-btns{display:flex;gap:8px;margin-top:14px;}
+.modal-btns button{flex:1;padding:9px;border:none;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;}
+.modal-btns .save{background:var(--accent);color:#fff;}
+.modal-btns .cancel{background:var(--input-bg);color:var(--text);}
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <button id="menu-btn" onclick="toggleSidebar()">☰</button>
+  <span id="channel-name">Loading...</span>
+  <button id="refresh-btn" onclick="refreshMessages()" title="Refresh">↻</button>
+  <button id="members-btn" onclick="toggleMembers()" title="Members">👥</button>
+  <div id="profile-area" onclick="openProfileModal()">
+    <div class="p-av" id="profile-avatar"><span id="profile-initials">?</span></div>
+    <span id="profile-name">Me</span>
+  </div>
+</div>
+
+<div id="overlay" onclick="closeSidebar()"></div>
+
+<div id="body">
+  <div id="sidebar">
+    <div id="sidebar-tabs">
+      <div class="stab active" id="tab-servers" onclick="showTab('servers')">Servers</div>
+      <div class="stab" id="tab-dms" onclick="showTab('dms')">DMs</div>
+    </div>
+    <div id="servers-list"></div>
+    <div id="dms-list" style="display:none"></div>
+  </div>
+
+  <div id="chat-area">
+    <div id="messages"><div class="empty-state">Select a channel</div></div>
+    <div id="typing-bar"></div>
+    <div id="input-area">
+      <div id="img-preview"><img id="preview-img" src="" alt=""><button onclick="clearImage()">✕</button></div>
+      <div id="input-row">
+        <div id="img-btn" onclick="$f('file-input').click()">📎</div>
+        <input type="file" id="file-input" accept="image/*" onchange="handleFile(this)">
+        <textarea id="msg-input" rows="1" placeholder="Message..." oninput="onInput(this)" onkeydown="handleKey(event)"></textarea>
+        <button id="send-btn" onclick="sendMessage()" disabled>
+          <svg width="16" height="16" viewBox="0 0 24 24"><path d="M2 21l21-9L2 3v7l15 2-15 2z"/></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div id="members-panel" class="hidden">
+    <div id="members-list"></div>
+  </div>
+</div>
+
+<div id="lightbox" onclick="closeLightbox()">
+  <button id="lightbox-close" onclick="closeLightbox()">✕</button>
+  <img id="lightbox-img" src="" alt="">
+</div>
+
+<div class="modal-bg" id="profile-modal">
+  <div class="modal-box">
+    <h3>Your Profile</h3>
+    <label>Display Name</label>
+    <input type="text" id="display-name-input" placeholder="Your name" autocorrect="off" autocapitalize="off">
+    <label>Avatar URL</label>
+    <input type="url" id="avatar-url-input" placeholder="https://i.imgur.com/...">
+    <div class="modal-btns">
+      <button class="cancel" onclick="closeProfileModal()">Cancel</button>
+      <button class="save" onclick="saveProfile()">Save</button>
+    </div>
+  </div>
+</div>
+
+<script>
+var BOT_TOKEN = 'Bot ';
+var token = BOT_TOKEN;
+var currentChannelId = null;
+var currentGuildId = null;
+var oldestMsgId = null;
+var loadingMsgs = false;
+var pendingFile = null;
+var lastMsgId = null;       // for auto-refresh polling
+var autoRefreshTimer = null;
+var typingPollTimer = null;
+var sidebarOpen = false;
+var displayName = (localStorage&&localStorage.getItem('dc_name'))||'Bot';
+var avatarUrl   = (localStorage&&localStorage.getItem('dc_avatar'))||'';
+
+function $f(id){ return document.getElementById(id); }
+
+// ── boot ──────────────────────────────────────────────────────────────────────
+window.onload = function(){
+  updateProfileUI();
+  fetch('/api/login',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({token:BOT_TOKEN.replace('Bot ','')})
+  }).then(function(r){return r.json();}).then(function(d){
+    if(d.ok){
+      token = d.token || BOT_TOKEN;
+      renderGuilds(d.guilds||[]);
+      loadDMs();
+      $f('channel-name').textContent = 'Select a channel';
+    } else {
+      $f('channel-name').textContent = 'Login error';
+    }
+  }).catch(function(){ $f('channel-name').textContent = 'Server offline'; });
+};
+
+// ── guilds ────────────────────────────────────────────────────────────────────
+function renderGuilds(guilds){
+  var html='';
+  guilds.forEach(function(g){
+    var icon = g.icon
+      ? '<img src="https://cdn.discordapp.com/icons/'+g.id+'/'+g.icon+'.png?size=64" alt="" loading="lazy">'
+      : ini(g.name);
+    html += '<div class="server-item" onclick="loadGuild(\''+g.id+'\',this)">'
+          + '<div class="server-icon">'+icon+'</div>'
+          + '<div class="server-name">'+es(g.name)+'</div></div>';
+  });
+  $f('servers-list').innerHTML = html || noItems('No servers');
+}
+
+var guildCache={};
+function loadGuild(gid,el){
+  document.querySelectorAll('.server-item').forEach(function(e){e.classList.remove('active');});
+  if(el) el.classList.add('active');
+  currentGuildId = gid;
+  if(guildCache[gid]){renderChannels(guildCache[gid]);return;}
+  fetch('/api/guilds/'+gid+'/channels',{headers:{Authorization:token}})
+    .then(function(r){return r.json();}).then(function(chs){
+      guildCache[gid]=chs; renderChannels(chs);
+    });
+}
+
+function renderChannels(chs){
+  var readable = chs.filter(function(c){return c.type===0||c.type===5||c.type===15;})
+    .sort(function(a,b){return (a.position||0)-(b.position||0);});
+  var cats={}, noCat=[];
+  chs.filter(function(c){return c.type===4;})
+    .sort(function(a,b){return (a.position||0)-(b.position||0);})
+    .forEach(function(c){cats[c.id]={name:c.name,channels:[]};});
+  readable.forEach(function(ch){
+    if(ch.parent_id&&cats[ch.parent_id]) cats[ch.parent_id].channels.push(ch);
+    else noCat.push(ch);
+  });
+  var html='<div class="channels-section">';
+  function chRow(ch){
+    var pre = ch.type===5?'📢':'#';
+    return '<div class="ch-item" id="ch-'+ch.id+'" onclick="openChannel(\''+ch.id+'\',\''+es(ch.name)+'\',this)">'
+          +'<span style="opacity:.5">'+pre+'</span> '+es(ch.name)+'</div>';
+  }
+  noCat.forEach(function(ch){html+=chRow(ch);});
+  Object.keys(cats).forEach(function(cid){
+    var cat=cats[cid];
+    if(!cat.channels.length) return;
+    html+='<div class="ch-header">'+es(cat.name)+'</div>';
+    cat.channels.forEach(function(ch){html+=chRow(ch);});
+  });
+  html+='</div>';
+  var srv=$f('servers-list');
+  var ex=srv.querySelector('.channels-section');
+  if(ex) ex.parentNode.removeChild(ex);
+  srv.insertAdjacentHTML('beforeend',html);
+}
+
+function loadDMs(){
+  fetch('/api/dms',{headers:{Authorization:token}})
+    .then(function(r){return r.json();}).then(function(dms){
+      var list=(dms||[]).filter(function(c){return c.type===1||c.type===3;});
+      var html='';
+      list.forEach(function(dm){
+        var name=dm.type===1?(dm.recipients&&dm.recipients[0]?dm.recipients[0].username:'Unknown'):(dm.name||'Group DM');
+        html+='<div class="server-item" onclick="openChannel(\''+dm.id+'\',\''+es(name)+'\',this)">'
+             +'<div class="server-icon" style="font-size:16px">💬</div>'
+             +'<div class="server-name">'+es(name)+'</div></div>';
+      });
+      $f('dms-list').innerHTML = html || noItems('No DMs');
+    });
+}
+
+// ── open channel ──────────────────────────────────────────────────────────────
+function openChannel(cid,name,el){
+  document.querySelectorAll('.ch-item,.server-item').forEach(function(e){e.classList.remove('active');});
+  if(el) el.classList.add('active');
+  currentChannelId=cid;
+  lastMsgId=null;
+  oldestMsgId=null;
+  $f('channel-name').textContent='#'+name.replace(/^#/,'');
+  $f('input-area').style.display='flex';
+  $f('send-btn').disabled=false;
+  closeSidebar();
+  fetchMessages();
+  startAutoRefresh();
+  startTypingPoll();
+  loadMembers();
+}
+
+// ── auto refresh ──────────────────────────────────────────────────────────────
+function startAutoRefresh(){
+  clearInterval(autoRefreshTimer);
+  autoRefreshTimer = setInterval(function(){
+    if(!currentChannelId) return;
+    var url='/api/channels/'+currentChannelId+'/messages?limit=5';
+    if(lastMsgId) url+='&after='+lastMsgId;
+    fetch(url,{headers:{Authorization:token}})
+      .then(function(r){return r.json();})
+      .then(function(data){
+        if(!Array.isArray(data)||!data.length) return;
+        // sort oldest first
+        data.sort(function(a,b){return a.id>b.id?1:-1;});
+        var msgs=$f('messages');
+        var atBottom = msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 60;
+        data.forEach(function(m){
+          if(lastMsgId && m.id <= lastMsgId) return;
+          lastMsgId = m.id;
+          var nodes = msgs.querySelectorAll('.msg[data-id]');
+          var lastNode = nodes[nodes.length-1];
+          var prev = lastNode ? lastNode._data : null;
+          var div=document.createElement('div');
+          div.innerHTML=renderMsg(m,prev);
+          var node=div.firstChild;
+          if(node){ node._data=m; msgs.appendChild(node); }
+        });
+        if(atBottom) msgs.scrollTop=msgs.scrollHeight;
+      }).catch(function(){});
+  }, 3000);
+}
+
+// ── typing poll ───────────────────────────────────────────────────────────────
+function startTypingPoll(){
+  clearInterval(typingPollTimer);
+  typingPollTimer = setInterval(function(){
+    if(!currentChannelId) return;
+    fetch('/api/channels/'+currentChannelId+'/typing-status',{headers:{Authorization:token}})
+      .then(function(r){return r.json();})
+      .then(function(data){
+        var bar=$f('typing-bar');
+        if(!data||!data.users||!data.users.length){bar.innerHTML='';return;}
+        var names=data.users.map(function(u){return es(u.name);});
+        var who=names.join(', ')+(names.length===1?' is':' are')+' typing';
+        bar.innerHTML=who+' <span class="typing-dots"><span></span><span></span><span></span></span>';
+      }).catch(function(){});
+  }, 3000);
+}
+
+// ── fetch messages (initial load + load more) ─────────────────────────────────
+function fetchMessages(before){
+  if(loadingMsgs) return;
+  loadingMsgs=true;
+  var url='/api/channels/'+currentChannelId+'/messages?limit=50';
+  if(before) url+='&before='+before;
+  var msgs=$f('messages');
+  if(!before) msgs.innerHTML='<div class="empty-state">Loading…</div>';
+  fetch(url,{headers:{Authorization:token}})
+    .then(function(r){return r.json();})
+    .then(function(data){
+      loadingMsgs=false;
+      if(!Array.isArray(data)){msgs.innerHTML='<div class="empty-state">Error loading.</div>';return;}
+      if(!data.length&&!before){msgs.innerHTML='<div class="empty-state">No messages yet.</div>';return;}
+      if(!before){
+        // set lastMsgId to newest
+        if(data.length) lastMsgId=data[0].id;
+        var html=data.length===50?loadMoreBtn():'';
+        var reversed=data.slice().reverse();
+        var prev=null;
+        reversed.forEach(function(m){html+=renderMsg(m,prev);prev=m;});
+        msgs.innerHTML=html;
+        // tag nodes
+        var nodes=msgs.querySelectorAll('.msg');
+        var ri=0;
+        reversed.forEach(function(m){
+          if(nodes[ri]){nodes[ri]._data=m;nodes[ri].setAttribute('data-id',m.id);}
+          ri++;
+        });
+        msgs.scrollTop=msgs.scrollHeight;
+        if(data.length) oldestMsgId=data[data.length-1].id;
+      } else {
+        var scrollH=msgs.scrollHeight;
+        var btn=msgs.querySelector('.load-more');
+        if(btn) btn.parentNode.removeChild(btn);
+        var h2=data.length===50?loadMoreBtn():'';
+        var rev2=data.slice().reverse();
+        var p2=null;
+        rev2.forEach(function(m){h2+=renderMsg(m,p2);p2=m;});
+        var frag=document.createElement('div');
+        frag.innerHTML=h2;
+        msgs.insertBefore(frag,msgs.firstChild);
+        msgs.scrollTop=msgs.scrollHeight-scrollH;
+        if(data.length) oldestMsgId=data[data.length-1].id;
+      }
+    }).catch(function(){loadingMsgs=false;});
+}
+
+function loadMoreBtn(){
+  return '<div class="load-more"><button onclick="fetchMessages(\''+oldestMsgId+'\')">Load older</button></div>';
+}
+
+// ── render message ────────────────────────────────────────────────────────────
+function renderMsg(m,prev){
+  var grouped=prev&&prev.author&&prev.author.id===m.author.id&&(new Date(m.timestamp)-new Date(prev.timestamp))<420000;
+  var atts=renderAttachments(m);
+  var txt=fmtContent(m);
+  if(grouped){
+    return '<div class="msg grouped" data-id="'+m.id+'"><div class="msg-content"><div class="msg-text">'+txt+atts+'</div></div></div>';
+  }
+  var av;
+  if(m.author.avatar){
+    av='<div class="avatar"><img src="https://cdn.discordapp.com/avatars/'+m.author.id+'/'+m.author.avatar+'.png?size=64" alt="" loading="lazy"></div>';
+  } else {
+    av='<div class="avatar no-img">'+ini(m.author.username)+'</div>';
+  }
+  return '<div class="msg" data-id="'+m.id+'">'+av
+       +'<div class="msg-content">'
+       +'<div class="msg-header"><span class="msg-author">'+es(m.author.username)+'</span><span class="msg-time">'+fmtTime(m.timestamp)+'</span></div>'
+       +'<div class="msg-text">'+txt+atts+'</div>'
+       +'</div></div>';
+}
+
+function renderAttachments(m){
+  var html='';
+  (m.attachments||[]).forEach(function(a){
+    if(a.content_type&&a.content_type.indexOf('image')===0){
+      html+='<div class="msg-img"><img src="'+es(a.proxy_url||a.url)+'" loading="lazy" onclick="openLightbox(\''+es(a.url)+'\')"></div>';
+    } else {
+      html+='<div class="msg-img"><a href="'+es(a.url)+'" target="_blank">'+es(a.filename)+'</a></div>';
+    }
+  });
+  (m.embeds||[]).forEach(function(e){
+    var src='';
+    if(e.type==='gifv'||e.type==='image') src=(e.video&&e.video.url)||(e.image&&e.image.url)||(e.thumbnail&&e.thumbnail.url)||'';
+    else if(e.type==='rich'&&e.image) src=e.image.url;
+    if(src) html+='<div class="msg-gif"><img src="'+es(src)+'" loading="lazy" onclick="openLightbox(\''+es(src)+'\')"></div>';
+  });
+  return html;
+}
+
+function fmtContent(m){
+  var t=m.content||'';
+  if(!t) return '';
+  var e=es(t);
+  e=e.replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>');
+  e=e.replace(/\*(.+?)\*/g,'<em>$1</em>');
+  e=e.replace(/`(.+?)`/g,'<code style="background:rgba(0,0,0,.3);padding:1px 4px;border-radius:3px;font-size:12px">$1</code>');
+  e=e.replace(/https?:\/\/[^\s<]+/g,function(u){return '<a href="'+u+'" target="_blank">'+u+'</a>';});
+  return e;
+}
+
+// ── send ──────────────────────────────────────────────────────────────────────
+function sendMessage(){
+  var input=$f('msg-input');
+  var content=input.value.trim();
+  if(!content&&!pendingFile) return;
+  if(!currentChannelId) return;
+  input.value=''; input.style.height='';
+  $f('send-btn').disabled=true;
+  var p;
+  if(pendingFile){
+    var fd=new FormData();
+    if(content) fd.append('payload_json',JSON.stringify({content:content}));
+    fd.append('files[0]',pendingFile);
+    p=fetch('/api/channels/'+currentChannelId+'/upload',{method:'POST',headers:{Authorization:token},body:fd}).then(function(r){return r.json();});
+    clearImage();
+  } else {
+    p=fetch('/api/channels/'+currentChannelId+'/messages',{method:'POST',headers:{Authorization:token,'Content-Type':'application/json'},body:JSON.stringify({content:content})}).then(function(r){return r.json();});
+  }
+  p.then(function(msg){
+    $f('send-btn').disabled=false;
+    if(msg.id){
+      var msgs=$f('messages');
+      var nodes=msgs.querySelectorAll('.msg[data-id]');
+      var lastNode=nodes[nodes.length-1];
+      var prev=lastNode?lastNode._data:null;
+      var div=document.createElement('div');
+      div.innerHTML=renderMsg(msg,prev);
+      var node=div.firstChild;
+      if(node){node._data=msg;node.setAttribute('data-id',msg.id);msgs.appendChild(node);}
+      msgs.scrollTop=msgs.scrollHeight;
+      lastMsgId=msg.id;
+    }
+  }).catch(function(){$f('send-btn').disabled=false;});
+}
+
+// ── image upload ──────────────────────────────────────────────────────────────
+function handleFile(input){
+  var file=input.files[0]; if(!file) return;
+  pendingFile=file;
+  var r=new FileReader();
+  r.onload=function(e){$f('preview-img').src=e.target.result;$f('img-preview').style.display='block';$f('send-btn').disabled=false;};
+  r.readAsDataURL(file);
+  input.value='';
+}
+function clearImage(){pendingFile=null;$f('img-preview').style.display='none';$f('preview-img').src='';}
+
+// ── typing indicator (send) ───────────────────────────────────────────────────
+var typingSendTimer=null;
+function onInput(el){
+  el.style.height='auto';
+  el.style.height=Math.min(el.scrollHeight,100)+'px';
+  $f('send-btn').disabled=!el.value.trim()&&!pendingFile;
+  if(!currentChannelId) return;
+  clearTimeout(typingSendTimer);
+  var name=displayName||'Bot';
+  fetch('/api/channels/'+currentChannelId+'/typing',{
+    method:'POST',
+    headers:{Authorization:token,'X-Display-Name':name,'X-User-Id':'local'}
+  });
+  typingSendTimer=setTimeout(function(){},8000);
+}
+
+function handleKey(e){
+  if(e.keyCode===13&&!e.shiftKey){e.preventDefault();sendMessage();}
+}
+
+// ── members ───────────────────────────────────────────────────────────────────
+function loadMembers(){
+  if(!currentGuildId) return;
+  fetch('/api/guilds/'+currentGuildId+'/members',{headers:{Authorization:token}})
+    .then(function(r){return r.json();}).then(renderMembers).catch(function(){});
+}
+
+function renderMembers(data){
+  if(!Array.isArray(data)) return;
+  var online=[],offline=[];
+  data.forEach(function(m){
+    var entry={id:m.user.id,name:m.nick||m.user.username,avatar:m.user.avatar,color:m.color||null};
+    if(m.status==='offline'||!m.status) offline.push(entry); else online.push(entry);
+  });
+  function row(m){
+    var av=m.avatar
+      ?'<div class="mem-av"><img src="https://cdn.discordapp.com/avatars/'+m.id+'/'+m.avatar+'.png?size=64" loading="lazy"></div>'
+      :'<div class="mem-av">'+ini(m.name)+'</div>';
+    var col=m.color?'style="color:'+m.color+'"':'';
+    return '<div class="member-item">'
+          +'<div class="mem-av-wrap">'+av+'<span class="status-dot offline"></span></div>'
+          +'<span class="mem-name" '+col+'>'+es(m.name)+'</span>'
+          +'<button class="dm-btn" onclick="dmUser(\''+m.id+'\',event)">DM</button>'
+          +'</div>';
+  }
+  var html='';
+  if(online.length){html+='<div class="role-header">Online – '+online.length+'</div>';online.forEach(function(m){html+=row(m);});}
+  if(offline.length){html+='<div class="role-header">Offline – '+offline.length+'</div>';offline.forEach(function(m){html+=row(m);});}
+  $f('members-list').innerHTML=html||noItems('No members');
+}
+
+function dmUser(uid,e){
+  e.stopPropagation();
+  fetch('/api/dms/open',{method:'POST',headers:{Authorization:token,'Content-Type':'application/json'},body:JSON.stringify({recipient_id:uid})})
+    .then(function(r){return r.json();}).then(function(dm){
+      if(dm.id) openChannel(dm.id,dm.recipients&&dm.recipients[0]?dm.recipients[0].username:'DM',null);
+    });
+}
+
+// ── lightbox ──────────────────────────────────────────────────────────────────
+function openLightbox(src){$f('lightbox-img').src=src;$f('lightbox').className='visible';}
+function closeLightbox(){$f('lightbox').className='';$f('lightbox-img').src='';}
+
+// ── sidebar / panels ──────────────────────────────────────────────────────────
+function toggleSidebar(){
+  sidebarOpen=!sidebarOpen;
+  if(sidebarOpen){$f('sidebar').classList.add('open');$f('overlay').classList.add('visible');}
+  else{$f('sidebar').classList.remove('open');$f('overlay').classList.remove('visible');}
+}
+function closeSidebar(){sidebarOpen=false;$f('sidebar').classList.remove('open');$f('overlay').classList.remove('visible');}
+function toggleMembers(){$f('members-panel').classList.toggle('hidden');}
+function refreshMessages(){if(currentChannelId){lastMsgId=null;oldestMsgId=null;fetchMessages();}}
+function showTab(tab){
+  $f('tab-servers').className='stab'+(tab==='servers'?' active':'');
+  $f('tab-dms').className='stab'+(tab==='dms'?' active':'');
+  $f('servers-list').style.display=tab==='servers'?'':'none';
+  $f('dms-list').style.display=tab==='dms'?'':'none';
+}
+
+// ── profile ───────────────────────────────────────────────────────────────────
+function updateProfileUI(){
+  var n=displayName||'Bot';
+  $f('profile-name').textContent=n;
+  if(avatarUrl) $f('profile-avatar').innerHTML='<img src="'+es(avatarUrl)+'" alt="">';
+  else $f('profile-initials').textContent=(n[0]||'?').toUpperCase();
+}
+function openProfileModal(){$f('display-name-input').value=displayName;$f('avatar-url-input').value=avatarUrl;$f('profile-modal').className='modal-bg visible';}
+function closeProfileModal(){$f('profile-modal').className='modal-bg';}
+function saveProfile(){
+  displayName=$f('display-name-input').value.trim();
+  avatarUrl=$f('avatar-url-input').value.trim();
+  if(localStorage){localStorage.setItem('dc_name',displayName);localStorage.setItem('dc_avatar',avatarUrl);}
+  updateProfileUI();closeProfileModal();
+}
+
+// ── utils ─────────────────────────────────────────────────────────────────────
+function ini(name){
+  if(!name) return '?';
+  var c=name.replace(/[^a-zA-Z0-9 ]/g,'');
+  return (c.split(' ').slice(0,2).map(function(w){return w[0]||'';}).join('')||name[0]||'?').toUpperCase();
+}
+function es(s){
+  if(!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtTime(iso){
+  var d=new Date(iso),now=new Date();
+  if(d.getDate()===now.getDate()&&(now-d)<86400000) return d.getHours()+':'+('0'+d.getMinutes()).slice(-2);
+  return (d.getMonth()+1)+'/'+d.getDate();
+}
+function noItems(t){return '<div style="padding:14px;color:var(--muted);font-size:12px">'+t+'</div>';}
+</script>
+</body>
+</html>
